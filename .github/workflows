@@ -1,0 +1,81 @@
+name: Extract project from zip
+
+# Run manually from the "Actions" tab.
+# It unzips edtech-pw.zip, moves the contents to the repo root, deletes the zip,
+# and commits everything back. Run it ONCE right after you upload the zip.
+
+on:
+  workflow_dispatch:
+    inputs:
+      zip_path:
+        description: "Path to the zip in the repo"
+        required: true
+        default: "edtech-pw.zip"
+
+permissions:
+  contents: write   # needed so the workflow can commit the extracted files
+
+jobs:
+  extract:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Sanity check — zip exists
+        run: |
+          if [ ! -f "${{ github.event.inputs.zip_path }}" ]; then
+            echo "❌ Zip not found at: ${{ github.event.inputs.zip_path }}"
+            ls -la
+            exit 1
+          fi
+          echo "✅ Found zip: $(ls -lh '${{ github.event.inputs.zip_path }}')"
+
+      - name: Unzip into a temp folder
+        run: |
+          mkdir -p _extracted
+          unzip -q "${{ github.event.inputs.zip_path }}" -d _extracted
+          echo "Zip contents:"
+          ls -la _extracted
+
+      - name: Move project files to repo root
+        run: |
+          # The zip contains a single top-level folder (edtech-pw/).
+          # Move everything inside it up to the repo root.
+          SRC_DIR=$(find _extracted -mindepth 1 -maxdepth 1 -type d | head -n 1)
+          echo "Source folder inside zip: $SRC_DIR"
+
+          shopt -s dotglob nullglob
+          # Don't clobber the workflow file we're currently running from
+          for item in "$SRC_DIR"/*; do
+            name=$(basename "$item")
+            if [ "$name" = ".github" ]; then
+              # merge .github instead of overwriting our workflows
+              mkdir -p .github
+              cp -R "$item"/* .github/ 2>/dev/null || true
+            else
+              rm -rf "./$name"
+              mv "$item" "./$name"
+            fi
+          done
+
+          # Cleanup
+          rm -rf _extracted
+          rm -f "${{ github.event.inputs.zip_path }}"
+
+          echo "Repo root after extraction:"
+          ls -la
+
+      - name: Commit extracted files
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          if git diff --staged --quiet; then
+            echo "Nothing to commit."
+          else
+            git commit -m "chore: extract project from zip"
+            git push
+          fi
