@@ -6,18 +6,31 @@ on:
 jobs:
   setup:
     runs-on: ubuntu-latest
+    env:
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
     steps:
       - uses: actions/checkout@v4
+
       - uses: actions/setup-node@v4
         with:
           node-version: "20"
           cache: "npm"
+
       - run: npm ci
-      - name: Push Prisma schema to the DB
-        env:
-          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+
+      - name: Debug — is the secret reaching the runner?
+        run: |
+          if [ -z "$DATABASE_URL" ]; then
+            echo "❌ DATABASE_URL is EMPTY — the GitHub secret is not set correctly."
+            echo "Fix: repo Settings → Secrets and variables → Actions → New repository secret → name it exactly DATABASE_URL"
+            exit 1
+          fi
+          echo "✅ DATABASE_URL is present. Length: ${#DATABASE_URL} chars"
+          echo "First 25 chars: ${DATABASE_URL:0:25}..."
+          echo "Last 20 chars: ...${DATABASE_URL: -20}"
+
+      - name: Push Prisma schema
         run: npx prisma db push --skip-generate --accept-data-loss
+
       - name: Seed the DB
-        env:
-          DATABASE_URL: ${{ secrets.DATABASE_URL }}
         run: npm run db:seed
