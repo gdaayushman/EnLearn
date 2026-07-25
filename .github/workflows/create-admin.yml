@@ -1,9 +1,5 @@
 name: Create or update admin account
 
-# One-click: creates/updates the admin user on the live database.
-# Reads email & password from GitHub secrets so nothing is hardcoded in git.
-# Safe to re-run: uses upsert (won't create duplicates).
-
 on:
   workflow_dispatch:
 
@@ -36,7 +32,7 @@ jobs:
 
       - name: Upsert admin
         run: |
-          cat > /tmp/upsert-admin.mjs <<'EOF'
+          cat > upsert-admin.mjs <<'EOF'
           import { PrismaClient, Role } from "@prisma/client";
           import bcrypt from "bcryptjs";
           const prisma = new PrismaClient();
@@ -51,4 +47,5 @@ jobs:
           console.log("✅ Admin ready:", user.email, "publicId:", user.publicId);
           await prisma.$disconnect();
           EOF
-          node /tmp/upsert-admin.mjs
+          node upsert-admin.mjs
+          rm -f upsert-admin.mjs
