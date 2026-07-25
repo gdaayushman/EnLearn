@@ -1,10 +1,10 @@
 /**
  * Seeds the full category → sub-category tree from the master prompt,
- * plus a few sample batches, an admin user, a teacher user, and a student user.
+ * plus a few sample batches, and the real admin user.
  *
  * Run: npm run db:seed
  */
-import { PrismaClient, Role, BatchType, ContentType } from "@prisma/client";
+import { PrismaClient, Role, BatchType } from "@prisma/client";
 import bcrypt from "bcryptjs";
 
 const prisma = new PrismaClient();
@@ -43,7 +43,6 @@ const tree: Array<{
   },
 ];
 
-// Sample batches per sub-category (subset for demo purposes)
 const sampleBatches: Record<string, Array<{ name: string; price?: number; isFree?: boolean; language?: string; type?: BatchType }>> = {
   "regular-batches": [
     { name: "Class 11 JEE Arjuna 2026",  price: 5999,  type: "hybrid" },
@@ -110,7 +109,7 @@ async function main() {
             subCategoryId: subCategory.id,
             name: b.name,
             slug: batchSlug,
-            batchCode: `PW-${batchSlug.toUpperCase().slice(0, 20)}-${bi}`,
+            batchCode: `EK-${batchSlug.toUpperCase().slice(0, 20)}-${bi}`,
             description: `${b.name} — comprehensive coverage with live classes, notes, DPPs, tests.`,
             batchType: b.type ?? "recorded",
             price: b.price ?? 0,
@@ -123,7 +122,6 @@ async function main() {
           },
         });
 
-        // Add a couple of sample content items (YouTube preview + a PDF)
         await prisma.batchContent.createMany({
           data: [
             {
@@ -150,7 +148,6 @@ async function main() {
     }
   }
 
-  // Subjects & chapters (Physics/Chemistry/Maths/Biology)
   console.log("📚 Seeding subjects & chapters…");
   const subjects = ["Physics", "Chemistry", "Mathematics", "Biology"];
   for (const [si, name] of subjects.entries()) {
@@ -169,25 +166,23 @@ async function main() {
     }
   }
 
-  console.log("👤 Seeding users (admin/teacher/student)…");
-  const password = await bcrypt.hash("password123", 10);
-  const admin = await prisma.user.upsert({
-    where: { email: "admin@pw.local" },
-    update: {},
-    create: { name: "Admin", email: "admin@pw.local", password, role: Role.admin },
-  });
+  // ─── REAL ADMIN ACCOUNT ─────────────────────────────────
+  console.log("👤 Seeding your admin account…");
+  const adminEmail = process.env.ADMIN_EMAIL || "toolsaayushman@gmail.com";
+  const adminPassword = process.env.ADMIN_PASSWORD || "Aayushman@2009";
+  const hashed = await bcrypt.hash(adminPassword, 10);
+
   await prisma.user.upsert({
-    where: { email: "teacher@pw.local" },
-    update: {},
-    create: { name: "Aayush Sir", email: "teacher@pw.local", password, role: Role.teacher },
+    where: { email: adminEmail },
+    update: { password: hashed, role: Role.admin, isActive: true },
+    create: {
+      name: "Aayushman",
+      email: adminEmail,
+      password: hashed,
+      role: Role.admin,
+    },
   });
-  const student = await prisma.user.upsert({
-    where: { email: "student@pw.local" },
-    update: {},
-    create: { name: "Rahul Student", email: "student@pw.local", password, role: Role.student },
-  });
-  console.log(`   Admin publicId:   ${admin.publicId}`);
-  console.log(`   Student publicId: ${student.publicId}`);
+  console.log(`   ✓ Admin: ${adminEmail}`);
 
   // Add a sample test to the first free batch
   console.log("📝 Seeding a sample test…");
@@ -240,9 +235,10 @@ async function main() {
     }
   }
 
-  console.log("✅ Seed complete. Login: admin@pw.local / password123");
+  console.log("✅ Seed complete.");
+  console.log(`   Login at your site with: ${adminEmail}`);
 }
 
 main()
   .catch((e) => { console.error(e); process.exit(1); })
-  .finally(async () => { await prisma.$disconnect(); });
+  .finally(async () => { await prisma.$disconnect(); })
