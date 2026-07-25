@@ -1,0 +1,98 @@
+name: Replace project from zip
+
+# Wipes the repo (except .git, .github, README, and the zip itself)
+# then extracts the uploaded zip and commits everything.
+# Use this to swap the whole codebase in one click.
+
+on:
+  workflow_dispatch:
+    inputs:
+      zip_path:
+        description: "Path to the zip in the repo (must be at root)"
+        required: true
+        default: "ekagra.zip"
+      keep_readme:
+        description: "Keep existing README.md?"
+        required: false
+        default: "false"
+
+permissions:
+  contents: write
+
+jobs:
+  replace:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Verify zip exists
+        run: |
+          if [ ! -f "${{ github.event.inputs.zip_path }}" ]; then
+            echo "❌ Zip not found: ${{ github.event.inputs.zip_path }}"
+            ls -la
+            exit 1
+          fi
+          echo "✅ Found zip: $(ls -lh '${{ github.event.inputs.zip_path }}')"
+
+      - name: Extract to temp folder
+        run: |
+          mkdir -p _new
+          unzip -q "${{ github.event.inputs.zip_path }}" -d _new
+          echo "Contents:"
+          ls -la _new
+
+      - name: Wipe old files
+        run: |
+          shopt -s dotglob nullglob
+          for item in ./*; do
+            name=$(basename "$item")
+            # keep these
+            case "$name" in
+              .git|.github|_new|"${{ github.event.inputs.zip_path }}")
+                continue ;;
+              README.md)
+                if [ "${{ github.event.inputs.keep_readme }}" = "true" ]; then continue; fi
+                ;;
+            esac
+            echo "Removing $item"
+            rm -rf "$item"
+          done
+
+      - name: Move new files to repo root
+        run: |
+          # zip has one top-level folder (e.g. "ekagra/"). Find it.
+          SRC_DIR=$(find _new -mindepth 1 -maxdepth 1 -type d | head -n 1)
+          echo "Source folder inside zip: $SRC_DIR"
+
+          shopt -s dotglob nullglob
+          for item in "$SRC_DIR"/*; do
+            name=$(basename "$item")
+            if [ "$name" = ".github" ]; then
+              # merge into existing .github so we don't nuke workflows
+              mkdir -p .github
+              cp -R "$item"/* .github/ 2>/dev/null || true
+            else
+              rm -rf "./$name"
+              mv "$item" "./$name"
+            fi
+          done
+
+          rm -rf _new
+          rm -f "${{ github.event.inputs.zip_path }}"
+
+          echo "Repo after replace:"
+          ls -la
+
+      - name: Commit
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          if git diff --staged --quiet; then
+            echo "Nothing changed."
+          else
+            git commit -m "chore: replace project from ${{ github.event.inputs.zip_path }}"
+            git push
+          fi
