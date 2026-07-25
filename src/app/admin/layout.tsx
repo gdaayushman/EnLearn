@@ -13,6 +13,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
     ["Sub-Categories", "/admin/sub-categories"],
     ["Batches", "/admin/batches"],
     ["Content", "/admin/content"],
+    ["✨ Auto-populate", "/admin/auto-populate"],
     ["Users", "/admin/users"],
     ["Tests", "/admin/tests"],
   ];

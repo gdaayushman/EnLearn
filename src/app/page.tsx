@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { inr } from "@/lib/utils";
+import { BRAND } from "@/lib/config";
 
 export const dynamic = "force-dynamic";
 
@@ -14,9 +15,9 @@ export default async function HomePage() {
   return (
     <div className="space-y-10">
       <section className="rounded-3xl bg-gradient-to-br from-brand-600 to-brand-900 p-8 text-white md:p-14">
-        <h1 className="text-3xl font-bold md:text-5xl">Learn. Practice. Excel.</h1>
+        <h1 className="text-3xl font-bold md:text-5xl">{BRAND.tagline}</h1>
         <p className="mt-3 max-w-2xl text-brand-100">
-          India&apos;s student-first learning platform. Live classes, notes, DPPs, tests & doubt-solving for JEE, NEET, Boards, UPSC and more.
+          {BRAND.name} — India&apos;s focused learning platform. AI-crafted daily practice, live classes, notes, tests & doubt-solving for JEE, NEET, Boards, UPSC and more.
         </p>
         <div className="mt-6 flex flex-wrap gap-3">
           <Link href="/batches" className="btn bg-white text-brand-700 hover:bg-brand-50">Browse batches</Link>

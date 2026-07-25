@@ -1,5 +1,5 @@
 {
-  "name": "edtech-pw",
+  "name": "ekagra",
   "version": "0.1.0",
   "private": true,
   "scripts": {
@@ -21,6 +21,7 @@
     "clsx": "^2.1.1",
     "jsonwebtoken": "^9.0.2",
     "next": "^14.2.15",
+    "pdf-lib": "^1.17.1",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "zod": "^3.23.8"

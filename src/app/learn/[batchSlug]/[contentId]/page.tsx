@@ -2,6 +2,7 @@ import { prisma } from "@/lib/prisma";
 import { currentUser } from "@/lib/auth";
 import { notFound } from "next/navigation";
 import Link from "next/link";
+import DPPViewer from "@/components/DPPViewer";
 
 export const dynamic = "force-dynamic";
 
@@ -11,8 +12,6 @@ export default async function LearnPage({ params }: { params: { batchSlug: strin
     include: { contents: { orderBy: { displayOrder: "asc" } } },
   });
   if (!batch) notFound();
-  const content = batch.contents.find((c) => c.id.toString() === params.contentId);
-  if (!content) notFound();
 
   const user = await currentUser();
   const enrolled = user
@@ -20,6 +19,23 @@ export default async function LearnPage({ params }: { params: { batchSlug: strin
         where: { userId_batchId: { userId: user.id, batchId: batch.id } },
       })
     : null;
+
+  // Handle daily-DPP URLs of the form /learn/[batchSlug]/dpp-<day>
+  const dppMatch = params.contentId.match(/^dpp-(\d+)$/);
+  if (dppMatch) {
+    if (!enrolled && !batch.isFree) {
+      return (
+        <div className="card p-8 text-center">
+          <p>🔒 Enroll to access Daily DPPs.</p>
+          <Link href={`/batches/${batch.slug}`} className="btn-primary mt-4 inline-flex">Back to batch</Link>
+        </div>
+      );
+    }
+    return <DPPViewer batchId={batch.id.toString()} batchSlug={batch.slug} day={Number(dppMatch[1])} />;
+  }
+
+  const content = batch.contents.find((c) => c.id.toString() === params.contentId);
+  if (!content) notFound();
 
   if (!enrolled && !content.isPreview && !batch.isFree) {
     return (
@@ -55,26 +71,14 @@ export default async function LearnPage({ params }: { params: { batchSlug: strin
         <h1 className="text-xl font-semibold">{content.title}</h1>
         {content.contentType === "video" && content.embedUrl && (
           <div className="aspect-video overflow-hidden rounded-2xl">
-            <iframe
-              src={content.embedUrl}
-              className="h-full w-full"
-              allow="accelerometer; autoplay; encrypted-media; picture-in-picture"
-              allowFullScreen
-            />
+            <iframe src={content.embedUrl} className="h-full w-full"
+              allow="accelerometer; autoplay; encrypted-media; picture-in-picture" allowFullScreen />
           </div>
         )}
         {content.contentType === "video" && !content.embedUrl && content.fileUrl && (
-          <video
-            src={content.fileUrl}
-            controls
-            controlsList="nodownload"
-            className="aspect-video w-full rounded-2xl bg-black"
-          />
+          <video src={content.fileUrl} controls controlsList="nodownload" className="aspect-video w-full rounded-2xl bg-black" />
         )}
-        {content.contentType === "pdf" && content.fileUrl && (
-          <iframe src={content.fileUrl} className="h-[80vh] w-full rounded-2xl border" />
-        )}
-        {(content.contentType === "dpp") && content.fileUrl && (
+        {(content.contentType === "pdf" || content.contentType === "dpp") && content.fileUrl && (
           <iframe src={content.fileUrl} className="h-[80vh] w-full rounded-2xl border" />
         )}
         {content.contentType === "link" && content.fileUrl && (

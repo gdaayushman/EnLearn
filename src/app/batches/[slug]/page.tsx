@@ -4,6 +4,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { currentUser } from "@/lib/auth";
 import ContactToBuy from "@/components/ContactToBuy";
+import DailyDPPStrip from "@/components/DailyDPPStrip";
 
 export const dynamic = "force-dynamic";
 
@@ -43,6 +44,8 @@ export default async function BatchDetailPage({ params }: { params: { slug: stri
           <h1 className="text-3xl font-bold">{batch.name}</h1>
           <p className="mt-2 text-slate-600 dark:text-slate-300">{batch.description}</p>
         </div>
+
+        <DailyDPPStrip batchId={batch.id.toString()} batchSlug={batch.slug} enrolled={!!enrolled || batch.isFree} />
 
         <section className="card p-5">
           <h2 className="mb-3 text-lg font-semibold">Course content</h2>
